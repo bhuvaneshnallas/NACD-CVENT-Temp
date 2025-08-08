@@ -1,0 +1,8 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Cvent_to Cosmos/.vs
+/Cvent_to Cosmos/Event_Grid_Sync_Poc/.vs/Event_Grid_Sync_Poc
+/Cvent_to Cosmos/Event_Grid_Sync_Poc/bin/Debug/net8.0
+/EventGrid to SF/.vs

@@ -1,0 +1,6 @@
+@Event_Grid_Sync_Poc_HostAddress = http://localhost:5296
+
+GET {{Event_Grid_Sync_Poc_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
