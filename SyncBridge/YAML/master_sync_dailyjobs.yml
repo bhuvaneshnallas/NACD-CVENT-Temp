@@ -1,0 +1,59 @@
+trigger:
+  batch: true
+  paths:
+    include:
+      - YAML/*
+      - src/Functions/SyncBridge_DailyJobs/*
+      - src/SyncBridge.Application/*
+      - src/SyncBridge.Domain/*
+      - src/SyncBridge.Infrastructure/*
+  branches:
+    include:
+      - master
+
+pr: none
+
+variables:
+  workingDirectory: "$(System.DefaultWorkingDirectory)/src"
+  buildPlatform: "Any CPU"
+  buildConfiguration: "Release"
+
+stages:
+  - stage: Build
+    displayName: Build stage
+
+    jobs:
+      - job: Build
+        displayName: Build Job
+        pool:
+          name: "Azure Pipelines"
+          vmImage: "windows-latest"
+
+        steps:
+          - task: NuGetCommand@2
+            displayName: Restore NuGet Packages
+            inputs:
+              restoreSolution: "$(workingDirectory)/**/SyncBridge_DailyJobs.csproj"
+
+          - task: DotNetCoreCLI@2
+            displayName: Build Function App
+            inputs:
+              command: "build"
+              projects: |
+                $(workingDirectory)/**/SyncBridge_DailyJobs.csproj
+              arguments: --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/output
+          - task: ArchiveFiles@2
+            displayName: Archive Build Output
+            inputs:
+              rootFolderOrFile: "$(Build.ArtifactStagingDirectory)/output"
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
+              replaceExistingArchive: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: Publish Artifact (drop)
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+            inputs:
+              pathToPublish: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
+              artifactName: "sync_dailyjobs_$(Build.SourceBranchName)_drop"

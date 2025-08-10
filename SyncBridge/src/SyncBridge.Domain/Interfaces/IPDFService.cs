@@ -1,0 +1,4 @@
+namespace SyncBridge.Domain.Interfaces
+{
+    public interface IPDFService { }
+}
