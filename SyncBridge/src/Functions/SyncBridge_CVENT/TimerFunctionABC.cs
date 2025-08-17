@@ -21,7 +21,7 @@ public class TimerFunctionABC
     {
         try
         {
-            await _syncCVENTToCosmos.Process();
+            //await _syncCVENTToCosmos.Process();
 
         }
         catch (Exception e)

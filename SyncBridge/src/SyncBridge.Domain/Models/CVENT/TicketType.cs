@@ -5,9 +5,6 @@ namespace SyncBridge.Domain.Models.CVENT;
 
 public class TicketType : CventCommonEntity
 {
-    [Key]
-    public string? id { get; set; }
-
     // Add this property to ensure type is always set to identified value
 
     //private string? _type;

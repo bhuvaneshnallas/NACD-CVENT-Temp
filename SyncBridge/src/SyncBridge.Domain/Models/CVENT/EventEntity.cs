@@ -4,8 +4,6 @@ namespace SyncBridge.Domain.Models.CVENT;
 
 public class EventEntity : CventCommonEntity
 {
-    [Key]
-    public string id { get; set; }
     public string Type { get; set; }
     public string Title { get; set; }
     public string Code { get; set; }

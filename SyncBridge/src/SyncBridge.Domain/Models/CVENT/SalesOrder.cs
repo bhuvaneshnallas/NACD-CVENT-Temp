@@ -4,8 +4,6 @@ namespace SyncBridge.Domain.Models.CVENT;
 
 public class SalesOrder : CventCommonEntity
 {
-    [Key]
-    public string? id { get; set; }
     public string? EventId { get; set; }
     public string? TransactionType { get; set; }
     public string? TransactionNumber { get; set; }

@@ -1,76 +1,82 @@
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using SyncBridge.Domain.DTOs;
 using SyncBridge.Domain.Interfaces;
+using SyncBridge.Domain.Models.CVENT;
 
 namespace SyncBridge.Application.UseCases;
 
 public class SyncCVENTToCosmos
 {
     private readonly ICventService _cventService;
-    private readonly IEventsDbContext _eventsDbContext;
+
+    private readonly IEventServices _eventServices;
 
     // If no event found, sync from default date (evaluated at object creation)
-    private readonly DateTime _defaultSyncDate = DateTime.UtcNow.AddDays(-10);
+    private readonly DateTime _defaultSyncDate = DateTime.UtcNow.AddDays(-4);
 
-    public SyncCVENTToCosmos(ICventService cventService, IEventsDbContext eventsDbContext)
+    public SyncCVENTToCosmos(ICventService cventService, IEventServices eventServices)
     {
         _cventService = cventService;
-        _eventsDbContext = eventsDbContext;
+        _eventServices = eventServices;
     }
 
     public async Task Process(CancellationToken cancellationToken = default)
     {
-        // Process Events
-        var lastModifiedEvents = GetLastModifiedDate(_eventsDbContext.Events, e => e.ModifiedDT ?? DateTime.MinValue);
-        var cventEvents = await _cventService.FetchData<CventEventResponse>("Event", lastModifiedEvents);
+        // Unified sync pipeline per module
+        await SyncModuleAsync<CventEventResponse, EventEntity>(
+            moduleName: "Event",
+            containerName: "Events",
+            map: e => e.ToEntity(),
+            cancellationToken);
 
-        // Map Cvent events to Cosmos entities
-        var eventEntities = cventEvents.Select(e => e.ToEntity()).ToList();
-        await _eventsDbContext.Events.AddRangeAsync(eventEntities, cancellationToken);
-        await _eventsDbContext.SaveChangesAsync(cancellationToken);
+        await SyncModuleAsync<CVENTTicketTypeResponse, TicketType>(
+            moduleName: "TicketType",
+            containerName: "TicketTypes",
+            map: t => t.ToEntity(),
+            cancellationToken);
 
-        //Process TicketTypes
-        var lastModifiedTicketTypes = GetLastModifiedDate(_eventsDbContext.TicketTypes, t => t.ModifiedDT ?? DateTime.MinValue);
-        var cventTicketTypes = await _cventService.FetchData<CVENTTicketTypeResponse>("TicketType", lastModifiedTicketTypes);
+        await SyncModuleAsync<CVENTAttendeeResponse, Attendee>(
+            moduleName: "Attendee",
+            containerName: "Attendees",
+            map: a => a.ToEntity(),
+            cancellationToken);
 
-        // Map Cvent ticket types to Cosmos entities
-        var ticketTypeEntities = cventTicketTypes.Select(t => t.ToEntity()).ToList();
-        await _eventsDbContext.TicketTypes.AddRangeAsync(ticketTypeEntities, cancellationToken);
-        await _eventsDbContext.SaveChangesAsync(cancellationToken);
+        await SyncModuleAsync<CVENTContactResponse, Domain.Models.CVENT.Contact>(
+            moduleName: "Contact",
+            containerName: "Contacts",
+            map: c => c.ToEntity(),
+            cancellationToken);
 
-        //Process Attendees
-        var lastModifiedAttendees = GetLastModifiedDate(_eventsDbContext.Attendees, a => a.ModifiedDT ?? DateTime.MinValue);
-        var cventAttendees = await _cventService.FetchData<CVENTAttendeeResponse>("Attendee", lastModifiedAttendees);
-
-        // Map Cvent attendees to Cosmos entities
-        var attendeeEntities = cventAttendees.Select(a => a.ToEntity()).ToList();
-        await _eventsDbContext.Attendees.AddRangeAsync(attendeeEntities, cancellationToken);
-
-        //Process Contact
-        var lastModifiedContacts = GetLastModifiedDate(_eventsDbContext.Contacts, c => c.ModifiedDT ?? DateTime.MinValue);
-        var cventContacts = await _cventService.FetchData<CVENTContactResponse>("Contact", lastModifiedContacts);
-
-        // Map Cvent contacts to Cosmos entities
-        var contactEntities = cventContacts.Select(c => c.ToEntity()).ToList();
-        await _eventsDbContext.Contacts.AddRangeAsync(contactEntities, cancellationToken);
-        await _eventsDbContext.SaveChangesAsync(cancellationToken);
-
-        // Process SalesOrder
-        // ???
-        // Transaction and order used to create the sales order?
+        // TODO: SalesOrder (Transaction/Order) pipeline not yet implemented.
     }
 
-    private DateTime GetLastModifiedDate<T>(DbSet<T> set, Func<T, DateTime> lastModifiedSelector)
-    where T : class
+    private async Task SyncModuleAsync<TSource, TEntity>(
+        string moduleName,
+        string containerName,
+        Func<TSource, TEntity> map,
+        CancellationToken cancellationToken)
+        where TEntity : CventCommonEntity
     {
-        // Get the most recent ModifiedDT; if none, fall back to default
-        var last = set.AsNoTracking()
-            .OrderBy(lastModifiedSelector)
-            .Select(lastModifiedSelector)
-            .FirstOrDefault();
+        //cancellationToken.ThrowIfCancellationRequested();
 
-        return last == default ? _defaultSyncDate : last;
+        // Get last sync timestamp (exclusive) or fallback
+        var lastSync = await _eventServices.RetrieveRecentSyncTimestamp<TEntity>(containerName)
+                       ?? _defaultSyncDate;
+
+        // Add one second to avoid re-processing boundary record
+        var fetchAfter = lastSync.AddSeconds(1);
+
+        var sourceItems = await _cventService.FetchData<TSource>(moduleName, fetchAfter);
+        if (sourceItems == null || sourceItems.Count == 0)
+            return;
+
+        //cancellationToken.ThrowIfCancellationRequested();
+
+        var entities = sourceItems.Select(map).ToList();
+        if (entities.Count == 0)
+            return;
+
+        await _eventServices.AddBulkAsync(entities, containerName);
     }
-
-
 }

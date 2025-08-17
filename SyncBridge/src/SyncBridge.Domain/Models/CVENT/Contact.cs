@@ -9,8 +9,6 @@ namespace SyncBridge.Domain.Models.CVENT;
 
 public class Contact : CventCommonEntity
 {
-    [Key]
-    public string? id { get; set; }
 
     // TODO: Add the necessary properties for the Contact class
 }
