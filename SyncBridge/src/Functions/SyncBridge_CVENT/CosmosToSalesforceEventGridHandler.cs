@@ -8,16 +8,16 @@ using Microsoft.Extensions.Logging;
 
 namespace SyncBridge_CVENT;
 
-public class EGFunctionSample
+public class CosmosToSalesforceEventGridHandler
 {
-    private readonly ILogger<EGFunctionSample> _logger;
+    private readonly ILogger<CosmosToSalesforceEventGridHandler> _logger;
 
-    public EGFunctionSample(ILogger<EGFunctionSample> logger)
+    public CosmosToSalesforceEventGridHandler(ILogger<CosmosToSalesforceEventGridHandler> logger)
     {
         _logger = logger;
     }
 
-    [Function(nameof(EGFunctionSample))]
+    [Function(nameof(CosmosToSalesforceEventGridHandler))]
     public void Run([EventGridTrigger] CloudEvent cloudEvent)
     {
         _logger.LogInformation("Event type: {type}, Event subject: {subject}", cloudEvent.Type, cloudEvent.Subject);
