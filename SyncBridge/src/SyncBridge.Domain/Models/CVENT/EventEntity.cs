@@ -29,7 +29,7 @@ public class EventEntity : CventCommonEntity
     public DateTime? LaunchDate { get; set; } // Launch after
     public string EventFormat { get; set; } // Format
     public string Conference { get; set; } // ?
-    public int Capacity { get; set; } // ?
+    public int? Capacity { get; set; } // ?
     public string ExternalEventId { get; set; } //?
     public string SFEventId { get; set; } //
     public string Source { get; set; } //?

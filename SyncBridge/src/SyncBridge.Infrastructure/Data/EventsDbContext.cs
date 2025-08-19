@@ -17,10 +17,10 @@ public class EventsDbContext : DbContext, IEventsDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<EventEntity>().ToContainer("Events").HasPartitionKey(e => e.id).OwnsMany(e => e.Planners);
-        modelBuilder.Entity<TicketType>().ToContainer("TicketTypes").HasPartitionKey(e => e.id);
-        modelBuilder.Entity<Attendee>().ToContainer("Attendees").HasPartitionKey(e => e.id);
-        modelBuilder.Entity<Contact>().ToContainer("Contacts").HasPartitionKey(e => e.id);
-        modelBuilder.Entity<SalesOrder>().ToContainer("SalesOrders").HasPartitionKey(e => e.id);
+        //modelBuilder.Entity<EventEntity>().ToContainer("Events").HasPartitionKey(e => e.id).OwnsMany(e => e.Planners);
+        //modelBuilder.Entity<TicketType>().ToContainer("TicketTypes").HasPartitionKey(e => e.id);
+        //modelBuilder.Entity<Attendee>().ToContainer("Attendees").HasPartitionKey(e => e.id);
+        //modelBuilder.Entity<Contact>().ToContainer("Contacts").HasPartitionKey(e => e.id);
+        //modelBuilder.Entity<SalesOrder>().ToContainer("SalesOrders").HasPartitionKey(e => e.id);
     }
 }

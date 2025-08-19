@@ -40,11 +40,11 @@ namespace SyncBridge.Infrastructure.Services
             histories.Add(history);
             SyncLog syncLog = new SyncLog();
             syncLog.id = Guid.NewGuid().ToString();
-            syncLog.Source = SyncLogConstants.SourceSystem.Salesforce;
-            syncLog.Destination = SyncLogConstants.SourceSystem.CMMP;
+            syncLog.Source = SyncLogConstants.SourceSystem.Cvent;
+            syncLog.Destination = SyncLogConstants.SourceSystem.Salesforce;
             syncLog.RecordId = syncData.id;
             syncLog.Module = syncData.module;
-            syncLog.Status = SyncLogConstants.Status.InProgress;
+            syncLog.Status = SyncLogConstants.Status.Ready;
             syncLog.SyncLastAttempt = SyncConstants.getCurrentESTDateTime();
             syncLog.SyncCreatedAt = SyncConstants.getCurrentESTDateTime();
             syncLog.RetryCount = 0;

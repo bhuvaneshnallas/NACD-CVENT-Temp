@@ -40,4 +40,5 @@ public class TicketType : CventCommonEntity
     public string? SFTicketTypeId { get; set; }
     public string? BatchId { get; set; }
     public string? ProcessQueueId { get; set; }
+    public string SFEventId { get; set; } = "";
 }

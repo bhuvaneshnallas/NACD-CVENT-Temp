@@ -26,7 +26,7 @@ namespace SyncBridge.Infrastructure.Services
             EventGridPublisherClient? client = GetClient(source, _config);
 
             var cloudEvent = new CloudEvent(
-                type: $"{module} {SyncLogConstants.Action.Retry}",
+                type: $"{module}",
                 source: id,
                 data: BinaryData.FromObjectAsJson(eventData),
                 dataContentType: "application/json"

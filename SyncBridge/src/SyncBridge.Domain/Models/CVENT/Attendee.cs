@@ -37,5 +37,8 @@ public class Attendee : CventCommonEntity
     public string? SFAttendeeId { get; set; }
     public string? BatchId { get; set; }
     public string? ProcessQueueId { get; set; }
+    public string SFEventId { get; set; } = "";
+    public string SFTicketTypeId { get; set; } = "";
+    public string? SFContactId { get; set; } = "";
 
 }
