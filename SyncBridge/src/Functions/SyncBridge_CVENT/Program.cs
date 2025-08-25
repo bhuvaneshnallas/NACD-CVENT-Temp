@@ -10,8 +10,6 @@ using SyncBridge.Infrastructure.Data;
 using SyncBridge.Infrastructure.Services;
 using AutoMapper;
 using SyncBridge.Infrastructure.AutoMapper;
-using AutoMapper;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 
@@ -42,10 +40,28 @@ var host = new HostBuilder()
             if (string.IsNullOrWhiteSpace(databaseName))
                 throw new InvalidOperationException("CosmosDbConfig:SyncDatabase is missing in configuration.");
 
+
             services.AddDbContextFactory<SyncLogDBContext>(options =>
             {
                 options.UseCosmos(connectionString, databaseName);
             });
+
+
+            //var cventConnectionString = config["CosmosDbConfig:ConnectionString"];
+            //if (string.IsNullOrEmpty(cventConnectionString))
+            //{
+            //    throw new InvalidOperationException("CosmosDB connection string is not configured.");
+            //}
+            //var cventDatabaseName = config["CventCosmosDatabaseName"];
+            //if (string.IsNullOrEmpty(cventDatabaseName))
+            //{
+            //    throw new InvalidOperationException("CosmosDB database name is not configured.");
+            //}
+
+            //services.AddDbContextFactory<EventsDbContext>(options =>
+            //{
+            //    options.UseCosmos(cventConnectionString, cventDatabaseName);
+            //});
 
             services.AddHttpClient();
             services.AddApplicationInsightsTelemetryWorkerService();
@@ -55,6 +71,9 @@ var host = new HostBuilder()
             services.AddScoped<IEventGridService, EventGridService>();
             services.AddScoped<ISalesforceService, SalesForceService>();
             services.AddScoped<ISyncLogService,SyncLogService>();
+            services.AddScoped<IAuthenticationTokenServices, AuthenticationTokenServices>();
+            services.AddScoped<ISettingUrlService, SettingUrlService>();
+
 
 
             var mapperConfig = new MapperConfiguration(cfg =>

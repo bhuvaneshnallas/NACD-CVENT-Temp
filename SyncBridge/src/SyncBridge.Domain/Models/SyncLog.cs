@@ -9,7 +9,6 @@ namespace SyncBridge.Domain.Models;
 
 public class SyncLog
 {
-    [Key]
     public string? id { get; set; }
     public string? Source { get; set; }
     public string? Destination { get; set; }
@@ -29,7 +28,6 @@ public class SyncLog
 
 public class History
 {
-    [Key]
     public string? id { get; set; }
     public string? HandlerName { get; set; }
     public string? Message { get; set; }

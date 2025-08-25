@@ -18,5 +18,14 @@ namespace SyncBridge.Domain.Models
         public const string ORDERITEMS_OBJECT = "OrderItems";
         public const string TRANSACTION_OBJECT = "Transaction";
         public const string TRANSACTIONITEMS_OBJECT = "TransactionItem";
+
+        public const string TYPE = "AppSettings";
+        public const string SYNCKEYPREFIX = "Sync";
+        public const string CVENTKEYPREFIX = "Cvent";
+        public const string SFKEYPREFIX = "SF.Cvent";
+        public const string BASEURL = "BaseURL";
+        public const string PATHURL = "PathURL";
+        public const string NOTIFICATION = "Notification";
+        public const string UPDATE = "Update";
     }
 }

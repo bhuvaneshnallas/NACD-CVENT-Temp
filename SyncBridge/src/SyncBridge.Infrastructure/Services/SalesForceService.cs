@@ -1,226 +1,98 @@
-﻿using Microsoft.EntityFrameworkCore.Diagnostics;
+﻿using AutoMapper;
+using AutoMapper.Execution;
+using Azure.Messaging;
+using CventSalesforceSyncApi.Domain.DTO;
+using CventSalesforceSyncApi.Domain.Utilities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SyncBridge.Domain.Common;
+using SyncBridge.Domain.DTOs;
 using SyncBridge.Domain.Interfaces;
+using SyncBridge.Domain.Models;
 using SyncBridge.Domain.Models.CVENT;
+using SyncBridge.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using SyncBridge.Domain.DTOs;
-using CventSalesforceSyncApi.Domain.DTO;
-using System.Reflection.Metadata;
-using CventSalesforceSyncApi.Domain.Utilities;
-using AutoMapper;
-using AutoMapper.Execution;
-using SyncBridge.Domain.Models;
-using Microsoft.Extensions.Logging;
-using System.Net.Http.Json;
+using static System.Net.WebRequestMethods;
 
 namespace SyncBridge.Infrastructure.Services
 {
     public class SalesForceService : ISalesforceService
     {
-
-        private readonly IConfiguration _configuration;
-        private readonly IMapper _mapper;
-        private readonly string _apiUrl = "https://nacdonline--fullcopy3.sandbox.my.salesforce.com/services/apexrest/EventApi__Event__c";
-        private readonly ISyncLogService _syncLogService;
         private readonly ILogger<SalesForceService> _logger;
+        private readonly IDbContextFactory<SyncLogDBContext> _contextFactory;
+        private readonly IAuthenticationTokenServices _authenticationTokenServices;
 
-        public SalesForceService(IMapper mapper, IConfiguration configuration, ISyncLogService syncLogService, ILogger<SalesForceService> logger)
+        public SalesForceService(ILogger<SalesForceService> logger, IDbContextFactory<SyncLogDBContext> contextFactory, IAuthenticationTokenServices authenticationTokenServices)
         {
-            _configuration = configuration;
-            _mapper = mapper;
-            _syncLogService = syncLogService;
             _logger = logger;
+            _contextFactory = contextFactory;
+            _authenticationTokenServices = authenticationTokenServices;
         }
 
-
-        public async Task<string> SalesForcePost<T>(T entity)
+        public async Task<HttpResponseMessage> SalesforceApiCall(dynamic entity,string destinationURL)
         {
-
-            //Regiester In Sync Log DB
-            QueueModel queueModel = _mapper.Map<QueueModel>(entity);
-            await _syncLogService.CreateSyncLog(queueModel, _logger);
-
-
-            //TODO: SalesForce POST URL Configuration Needed
             string json;
 
             switch (entity)
             {
-                case EventEntity e:
-                    var eventDto = ReadDto(SFConstants.EVENT, entity);
-                    json = JsonConvert.SerializeObject(new List<EventDto> { eventDto });
+                case EventDto e:
+                    json = JsonConvert.SerializeObject(new List<EventDto> { entity });
                     break;
 
-                case Attendee a:
-                    var attendeeDto = ReadDto(SFConstants.EVENT, entity);
-                    json = JsonConvert.SerializeObject(new List<AttendeeDto> { attendeeDto });
+                case AttendeeDto a:
+                    json = JsonConvert.SerializeObject(new List<AttendeeDto> { entity });
                     break;
 
-                case TicketType t:
-                    var ticketDto = ReadDto(SFConstants.EVENT, entity);
-                    json = JsonConvert.SerializeObject(new List<TicketTypeDto> { ticketDto });
+                case TicketTypeDto t:
+                    json = JsonConvert.SerializeObject(new List<TicketTypeDto> { entity });
                     break;
 
                 case SyncBridge.Domain.Models.CVENT.Contact c:
-                    var contactDto = ReadDto(SFConstants.EVENT, entity);
-                    json = JsonConvert.SerializeObject(new List<SyncBridge.Domain.Models.CVENT.Contact> { contactDto });
+                    json = JsonConvert.SerializeObject(new List<SyncBridge.Domain.Models.CVENT.Contact> { entity });
                     break;
 
-                case SalesOrder s:
-                    var salesOrderDto = ReadDto(SFConstants.EVENT, entity);
-                    json = JsonConvert.SerializeObject(new List<SalesOrderDto> { salesOrderDto });
+                case SalesOrderDto s:
+                    json = JsonConvert.SerializeObject(new List<SalesOrderDto> { entity });
                     break;
+
+                case ReceiptDto s:
+                    json = JsonConvert.SerializeObject(new List<ReceiptDto> { entity });
+                    break;
+
+
 
                 default:
-                    throw new InvalidOperationException($"Unsupported entity type: {typeof(T).Name}");
+                    throw new InvalidOperationException($"Unsupported entity type");
             }
 
+            HttpResponseMessage response;
 
             // Now send json to Salesforce
             using (var client = new HttpClient())
             {
-                var accessToken = await GetToken(_configuration);
+                var accessToken = await _authenticationTokenServices.GetSalesForceAuthToken();
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await client.PostAsync(new Uri(_apiUrl), content);
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                     await _syncLogService.UpdateSyncLog(queueModel.id, _logger, "Handler-3", SyncLogConstants.Status.Failed, SyncLogConstants.ErrorCode.SF_Failed, responseBody.ToString());
-
-                    return $"Error posting to Salesforce. Status: {response.StatusCode}, Response: {responseBody}";
-                }
-                else
-                {
-                    await _syncLogService.UpdateSyncLog(queueModel.id, _logger, "Handler-3", SyncLogConstants.Status.Completed,"", responseBody.ToString());
-
-                    var items = System.Text.Json.JsonSerializer.Deserialize<List<SalesforceResponseItem>>(responseBody);
-
-                    await updateSFId(items);
-
-                    return $"Successfully posted {json} to Salesforce.{responseBody}";
-                }
+                response = await client.PostAsync(new Uri(destinationURL), content);
             }
+            return response;
         }
 
-
-        public async Task<string> GetToken(IConfiguration configuration)
-        {
-            string accessToken = string.Empty;
-            try
-            {
-                var url = configuration.GetSection("SalesforceApiConfig:TokenApi").Value;
-                using (var client = new HttpClient())
-                {
-                    var reqContent = new Dictionary<string, string>();
-                    reqContent.Add("username", configuration.GetSection("SalesforceApiConfig:username").Value);
-                    reqContent.Add("password", configuration.GetSection("SalesforceApiConfig:password").Value);
-                    reqContent.Add("grant_type", configuration.GetSection("SalesforceApiConfig:grant_type").Value);
-                    reqContent.Add("client_id", configuration.GetSection("SalesforceApiConfig:client_id").Value);
-                    reqContent.Add("client_secret", configuration.GetSection("SalesforceApiConfig:client_secret").Value);
-                    using (var content = new FormUrlEncodedContent(reqContent))
-                    {
-                        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
-                        content.Headers.ContentType.CharSet = "UTF-8";
-                        client.DefaultRequestHeaders.ExpectContinue = false;
-                        HttpResponseMessage response = await client.PostAsync(new Uri(url), content);
-                        var tokenResponse = response.Content.ReadAsStringAsync().Result;
-                        var jsonResponse = JsonConvert.DeserializeObject<SalesForceTokenResponse>(tokenResponse);
-                        accessToken = jsonResponse.Access_token;
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-            return accessToken;
-        }
-
-
-        /// <summary>
-        /// Assign Dynamic Dto
-        /// </summary>
-        /// <param name="module"></param>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        private dynamic ReadDto(string module, object entity)
-        {
-            dynamic dto = null;
-
-            var json = JsonConvert.SerializeObject(entity);
-            try
-            {
-                switch (module)
-                {
-                    case SFConstants.EVENT:
-                        var eventData = JsonConvert.DeserializeObject<EventEntity>(json);
-
-                        dto = _mapper.Map<EventDto>(eventData);
-                        return dto;
-
-
-                    case SFConstants.SALESORDER:
-                        var salesOrderData = JsonConvert.DeserializeObject<SalesOrderDto>(json);
-                        return salesOrderData;
-
-                    case SFConstants.ATTENDEE:
-
-                        var attendeeData = JsonConvert.DeserializeObject<Attendee>(json);
-                        dto = _mapper.Map<AttendeeDto>(attendeeData);
-                        return dto;
-
-                    case SFConstants.RECEIPT:
-                        var receiptData = JsonConvert.DeserializeObject<ReceiptDto>(json);
-                        return receiptData;
-
-                    case SFConstants.TICKETTYPE:
-
-                        var ticketTypeData = JsonConvert.DeserializeObject<TicketType>(json);
-                        dto = _mapper.Map<TicketTypeDto>(ticketTypeData);
-                        return dto;
-
-                    default:
-                        throw new InvalidOperationException("Unknown module type.");
-
-                }
-            }
-            catch (Exception ex)
-            {
-                // _log.LogInformation(@$"Mapping Exception : {ex}");
-                throw ex;
-            }
-        }
-
-        //TODO: forlocal testing remove it
-        public async Task updateSFId(List<SalesforceResponseItem> items)
-        {
-            var baseUrl = "http://localhost:5296/api/EventSync/UpdateSFEventId";
-
-            using var client = new HttpClient();
-
-            var requestUrl = $"{baseUrl}?sdId={items[0].SfId}&eventId={items[0].Id}";
-
-            var request = new HttpRequestMessage(HttpMethod.Patch, requestUrl);
-
-            request.Content = JsonContent.Create(new { });
-
-            var response = await client.SendAsync(request);
-
-        }
     }
 
-            
 }

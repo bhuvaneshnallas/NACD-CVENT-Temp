@@ -6,6 +6,7 @@ using SyncBridge.Domain.Interfaces;
 using SyncBridge.Domain.Models;
 using SyncBridge.Domain.Utility;
 using SyncBridge.Infrastructure.Data;
+using SyncBridge.Domain.Models;
 
 namespace SyncBridge.Infrastructure.Services
 {
@@ -67,45 +68,6 @@ namespace SyncBridge.Infrastructure.Services
             return syncLog;
         }
 
-        public async Task<SyncLog> UpdateSyncLog(
-            string syncLogId,
-            ILogger log,
-            string handlerName,
-            string status,
-            string error,
-            string errorCode
-        )
-        {
-            using var context = _contextFactory.CreateDbContext();
-            var syncLog = context.SyncLog.FirstOrDefault(x => x.id == syncLogId);
-            if (syncLog != null)
-            {
-                log.LogInformation($@"synclog save start {syncLogId}");
-                syncLog.Status = status;
-                var history = new History
-                {
-                    id = Guid.NewGuid().ToString(),
-                    HandlerName = handlerName,
-                    Message = string.Empty,
-                    Status = status,
-                    Error = error,
-                    ErrorCode = errorCode,
-                    Timestamp = SyncConstants.getCurrentESTDateTime(),
-                };
-                syncLog.History?.Add(history);
-                try
-                {
-                    await context.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    log.LogError($"Error saving SyncLog {syncLogId}: {ex.Message}", ex);
-                }
-                log.LogInformation($@"synclog save end {syncLogId}");
-            }
-            return syncLog;
-        }
-
         public async Task<SyncLog?> UpdateStatusAsync(string id, string status)
         {
             await using var context = _contextFactory.CreateDbContext();
@@ -149,5 +111,42 @@ namespace SyncBridge.Infrastructure.Services
             await context.SaveChangesAsync();
             return syncLogData;
         }
+
+        public async Task<SyncLog> UpdateSyncLog(SyncLogUpdate syncLogUpdate, ILogger log)
+        {
+            log.LogInformation($@"synclog Update Initiated {syncLogUpdate.id}");
+            using var context = _contextFactory.CreateDbContext();
+            var syncLog = await context.SyncLog.FirstOrDefaultAsync(x => x.id == syncLogUpdate.id);
+            if (syncLog != null)
+            {
+                // Update main status
+                syncLog.Status = syncLogUpdate.Status;
+                syncLog.Destination = syncLogUpdate.IsCventContact ? SyncLogConstants.SourceSystem.Cvent : syncLog.Destination;
+                syncLog.RetryCount = syncLogUpdate.Status == SyncLogConstants.Status.Retry_Inititated ? syncLog.RetryCount + 1 : syncLog.RetryCount;
+                var history = new History
+                {
+                    id = Guid.NewGuid().ToString(),
+                    HandlerName = syncLogUpdate.HandlerName,
+                    Message = string.Empty,
+                    Status = syncLogUpdate.Status,
+                    Error = syncLogUpdate.Error,
+                    ErrorCode = syncLogUpdate.ErrorCode,
+                    Timestamp = SyncLogConstants.getCurrentESTDateTime()
+                };
+                syncLog.History?.Add(history);
+                try
+                {
+                    await context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    log.LogError($"Error saving SyncLog: {ex.Message}", ex);
+                }
+                log.LogInformation($@"Synclog Update Completed");
+            }
+            return syncLog;
+        }
+
+
     }
 }

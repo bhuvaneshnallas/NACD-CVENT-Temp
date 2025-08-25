@@ -17,7 +17,7 @@ namespace SyncBridge.Infrastructure.AutoMapper
         {
             //CreateMap<Venue, VenueDto>();
 
-            CreateMap<EventEntity, EventDto>()
+            CreateMap<EventFromSyncAPI, EventDto>()
              .ForMember(dest => dest.id, opt => opt.MapFrom(src => src.id))
             .ForMember(dest => dest.ExternalEventId, opt => opt.MapFrom(src => src.ExternalEventId))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))

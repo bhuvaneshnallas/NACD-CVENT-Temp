@@ -11,16 +11,10 @@ namespace SyncBridge.Domain.Interfaces
     public interface ISyncLogService
     {
         public Task<SyncLog> CreateSyncLog(QueueModel syncData, ILogger logger);
-        public Task<SyncLog> UpdateSyncLog(
-            string syncLogId,
-            ILogger log,
-            string handlerName,
-            string status,
-            string error,
-            string errorCode
-        );
         public Task<List<SyncLog>> GetFailedRecors();
 
         public Task<SyncLog> UpdateStatus(string id, string status);
+
+        public Task<SyncLog> UpdateSyncLog(SyncLogUpdate syncLogUpdate, ILogger log);
     }
 }

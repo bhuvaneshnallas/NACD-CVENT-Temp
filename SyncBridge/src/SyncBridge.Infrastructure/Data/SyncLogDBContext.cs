@@ -13,6 +13,10 @@ public class SyncLogDBContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        //modelBuilder.Entity<SyncLog>().ToContainer("Synclog").HasPartitionKey(e => e.id);
+        modelBuilder.Entity<SyncLog>()
+            .ToContainer("Synclog")
+            .HasPartitionKey(e => e.id)
+            .HasNoDiscriminator();
+
     }
 }

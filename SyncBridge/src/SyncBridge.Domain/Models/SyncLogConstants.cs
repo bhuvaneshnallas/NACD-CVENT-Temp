@@ -15,6 +15,7 @@ public class SyncLogConstants
         public const string Cvent = "CVENT";
         public const string Notification = "Notification";
         public const string Cosmos = "Cosmos";
+        public const string SyncLog = "SyncLog";
     }
 
     public static class Status
@@ -35,6 +36,18 @@ public class SyncLogConstants
         public const string SF_Id_Update_Failed = "SF_ID_UPDATE_FAILED";
     }
 
+    public static class Error
+    {
+        public const string SF_DependencyError = "SF_DependencyError";
+
+        // Field-specific errors
+        public const string SF_EventId_Missing = "SF_EventId_Missing";
+        public const string SF_ContactId_Missing = "SF_ContactId_Missing";
+        public const string SF_TicketTypeId_Missing = "SF_TicketTypeId_Missing";
+        public const string SF_OrderId_Missing = "SF_OrderId_Missing";
+    }
+
+
     public static class Action
     {
         public const string Create = "Create";
@@ -51,5 +64,12 @@ public class SyncLogConstants
         public const string CVENTtoSFunction = "CVENTtoSFunction";
         public const string CMMP = "CMMP";
         public const string RetryFunction = "RetryFunction";
+    }
+
+    public const string EASTERNSTANDARDTIME = "Eastern Standard Time";
+
+    public static DateTime getCurrentESTDateTime()
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(SyncLogConstants.EASTERNSTANDARDTIME));
     }
 }
